@@ -1,19 +1,34 @@
-const pokedex = document.getElementById('pokedex');
-
-const fetchPokemon = () => {
-    const promises = [];
-    for (let i = 1; i <= 150; i++) {
-        const url = `https://pokeapi.co/api/v2/pokemon/${i}`;
-        promises.push(fetch(url).then((res) => res.json()));
+const fs = require("fs");
+const fetch = require("node-fetch");
+const file = "./pokelist.txt";
+fs.readFile(file, (err, data) => {
+    if (err) {
+        console.err(`Cannot Open File: ${file}!`);
+        return;
     }
-    Promise.all(promises).then((results) => {
-        const pokemon = results.map((result) => ({
-            name: result.name,
-            type: result.types.map((type) => type.type.name).join(', '),
-            id: result.id
-        }));
-        displayPokemon(pokemon);
-    });
-};
-
-           
+    Promise.all(data.toString().split("\n")
+        .map(pokemon => {
+            return fetch(`https://pokeapi.co/api/v2/pokemon/${pokemon.trim()}`)
+                .then(res => {
+                    if (res.ok) {
+                        return res.json()
+                    } else {
+                        throw new Error(`No data found for ${pokemon}`)
+                    }
+                })
+                .then(pokeData => {
+                    return `${pokemon}: ${pokeData.types.map(t => t.type.name).join(", ")}`
+                })
+                .catch(error => {
+                    return `${pokemon}: ${error.message}`
+                })
+        }))
+        .then(results => {
+            results.forEach((item) => {
+                console.log(item);
+            })
+        })
+        .catch(error => {
+            console.log(error)
+        })
+})   
